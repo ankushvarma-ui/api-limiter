@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RateGuard — Live Backend Tester</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Clash+Display:wght@600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0a0a0f;
+  --panel: #111118;
+  --border: #1e1e2e;
+  --accent: #6ee7b7;
+  --red: #f87171;
+  --yellow: #fbbf24;
+  --blue: #60a5fa;
+  --purple: #a78bfa;
+  --text: #e2e8f0;
+  --muted: #64748b;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 0;
+}
+
+/* NOISE OVERLAY */
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 999; opacity: 0.4;
+}
+
+.layout { display: grid; grid-template-columns: 320px 1fr; min-height: 100vh; }
+
+/* ── SIDEBAR ── */
+.sidebar {
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  padding: 24px;
+  display: flex; flex-direction: column; gap: 20px;
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+}
+
+.brand { display: flex; align-items: center; gap: 10px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+.brand-icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: linear-gradient(135deg, var(--accent), #3b82f6);
+  display: flex; align-items: center; justify-content: center; font-size: 18px;
+}
+.brand-name { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; }
+.brand-sub { font-size: 0.65rem; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+
+.section-label {
+  font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.15em;
+  color: var(--muted); font-family: 'JetBrains Mono', monospace;
+  margin-bottom: 8px;
+}
+
+/* URL Config */
+.url-config input {
+  width: 100%; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px 12px; color: var(--text);
+  font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;
+  outline: none; transition: border-color 0.2s;
+}
+.url-config input:focus { border-color: var(--accent); }
+
+/* TOKEN DISPLAY */
+.token-box {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px 12px;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
+  color: var(--accent); word-break: break-all; line-height: 1.5;
+  min-height: 44px;
+}
+.token-label { color: var(--muted); margin-bottom: 4px; font-size: 0.6rem; }
+
+/* RATE METER */
+.meter-section { }
+.meter-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.meter-count { font-family: 'JetBrains Mono', monospace; font-size: 1.4rem; font-weight: 600; }
+.meter-track { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.meter-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease, background 0.4s ease; width: 0%; background: var(--accent); }
+.meter-labels { display: flex; justify-content: space-between; margin-top: 5px; font-size: 0.62rem; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+
+/* STATUS BADGES */
+.status-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.status-badge {
+  border-radius: 8px; padding: 10px;
+  border: 1px solid var(--border); text-align: center;
+}
+.status-badge .s-val { font-size: 1rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
+.status-badge .s-key { font-size: 0.6rem; color: var(--muted); margin-top: 2px; }
+
+/* BUTTONS */
+.btn-group { display: flex; flex-direction: column; gap: 6px; }
+.api-btn {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 14px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--bg);
+  color: var(--text); cursor: pointer; font-family: 'DM Sans', sans-serif;
+  font-size: 0.82rem; font-weight: 600; transition: all 0.15s;
+  text-align: left; width: 100%;
+}
+.api-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(110,231,183,0.05); }
+.api-btn:active { transform: scale(0.98); }
+.api-btn.loading { opacity: 0.6; pointer-events: none; }
+.method-tag {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.6rem;
+  font-weight: 600; padding: 2px 6px; border-radius: 4px;
+  flex-shrink: 0;
+}
+.tag-post { background: rgba(96,165,250,0.15); color: var(--blue); }
+.tag-get  { background: rgba(110,231,183,0.15); color: var(--accent); }
+.tag-del  { background: rgba(248,113,113,0.15); color: var(--red); }
+
+.divider { height: 1px; background: var(--border); }
+
+.spam-btn {
+  padding: 12px; border-radius: 10px; border: none;
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  color: white; font-family: 'DM Sans', sans-serif;
+  font-weight: 700; font-size: 0.85rem; cursor: pointer;
+  transition: all 0.2s; width: 100%;
+}
+.spam-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(124,58,237,0.4); }
+
+.reset-btn {
+  padding: 10px; border-radius: 10px;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--muted); font-family: 'DM Sans', sans-serif;
+  font-size: 0.8rem; font-weight: 600; cursor: pointer;
+  transition: all 0.2s; width: 100%;
+}
+.reset-btn:hover { color: var(--red); border-color: var(--red); }
+
+/* ── MAIN AREA ── */
+.main { display: flex; flex-direction: column; overflow: hidden; }
+
+/* TOP BAR */
+.topbar {
+  padding: 16px 28px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  background: rgba(17,17,24,0.8); backdrop-filter: blur(10px);
+  position: sticky; top: 0; z-index: 10;
+}
+.topbar-title { font-size: 0.85rem; font-weight: 700; }
+.live-indicator { display: flex; align-items: center; gap: 6px; font-size: 0.7rem; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+.live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); animation: blink 1.5s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* RESPONSE PANEL */
+.response-area { flex: 1; padding: 24px 28px; overflow-y: auto; }
+
+/* RESPONSE CARD */
+.response-card {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 14px; overflow: hidden; margin-bottom: 16px;
+  animation: slideIn 0.3s ease both;
+}
+@keyframes slideIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+.response-header {
+  padding: 12px 18px; display: flex; align-items: center;
+  justify-content: space-between; border-bottom: 1px solid var(--border);
+}
+.response-method { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; font-weight: 600; }
+.response-status {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;
+  padding: 3px 10px; border-radius: 20px; font-weight: 600;
+}
+.s200 { background: rgba(16,185,129,0.15); color: #10b981; }
+.s201 { background: rgba(96,165,250,0.15); color: var(--blue); }
+.s401 { background: rgba(251,191,36,0.15); color: var(--yellow); }
+.s403 { background: rgba(167,139,250,0.15); color: var(--purple); }
+.s429 { background: rgba(248,113,113,0.15); color: var(--red); }
+.s500 { background: rgba(248,113,113,0.15); color: var(--red); }
+.s0   { background: rgba(100,116,139,0.15); color: var(--muted); }
+
+.response-time { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--muted); }
+
+.response-body {
+  padding: 16px 18px;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;
+  line-height: 1.8; white-space: pre-wrap; word-break: break-word;
+}
+
+/* EMPTY STATE */
+.empty-state {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; height: 100%; min-height: 400px;
+  color: var(--muted); text-align: center; gap: 12px;
+}
+.empty-icon { font-size: 3rem; opacity: 0.3; }
+.empty-state h3 { font-size: 1rem; font-weight: 700; opacity: 0.5; }
+.empty-state p { font-size: 0.8rem; opacity: 0.4; max-width: 260px; line-height: 1.6; }
+
+/* LOG STRIP */
+.log-strip {
+  border-top: 1px solid var(--border);
+  padding: 10px 28px; display: flex; gap: 20px; overflow-x: auto;
+  background: var(--panel);
+}
+.log-item {
+  display: flex; align-items: center; gap: 6px;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
+  color: var(--muted); white-space: nowrap; flex-shrink: 0;
+  animation: fadeIn 0.3s ease;
+}
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+.log-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+
+/* JSON coloring */
+.j-key { color: #93c5fd; }
+.j-str { color: #86efac; }
+.j-num { color: #fde68a; }
+.j-bool-true { color: #6ee7b7; }
+.j-bool-false { color: #f87171; }
+.j-null { color: #a78bfa; }
+.j-brace { color: #94a3b8; }
+
+@media(max-width:700px){
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { position: static; height: auto; }
+}
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-icon">🛡️</div>
+      <div>
+        <div class="brand-name">RateGuard</div>
+        <div class="brand-sub">BACKEND TESTER</div>
+      </div>
+    </div>
+
+    <!-- BASE URL -->
+    <div class="url-config">
+      <div class="section-label">Backend URL</div>
+      <input type="text" id="baseUrl" value="http://localhost:5000" placeholder="http://localhost:5000">
+    </div>
+
+    <!-- JWT TOKEN -->
+    <div>
+      <div class="section-label">JWT Token (auto-filled on login)</div>
+      <div class="token-label" id="tokenLabel">No token yet</div>
+      <div class="token-box" id="tokenBox">—</div>
+    </div>
+
+    <!-- RATE METER -->
+    <div class="meter-section">
+      <div class="section-label">Rate Limit Usage</div>
+      <div class="meter-header">
+        <span style="font-size:0.75rem;color:var(--muted)">Requests sent</span>
+        <span class="meter-count" id="meterCount">0 <span style="font-size:0.8rem;color:var(--muted)">/100</span></span>
+      </div>
+      <div class="meter-track"><div class="meter-fill" id="meterFill"></div></div>
+      <div class="meter-labels"><span>0</span><span>50</span><span>100</span></div>
+    </div>
+
+    <!-- STATUS -->
+    <div class="status-row">
+      <div class="status-badge">
+        <div class="s-val" id="totalReqs" style="color:var(--accent)">0</div>
+        <div class="s-key">Total Sent</div>
+      </div>
+      <div class="status-badge">
+        <div class="s-val" id="lastStatus" style="color:var(--muted)">—</div>
+        <div class="s-key">Last Status</div>
+      </div>
+    </div>
+
+    <!-- API BUTTONS -->
+    <div>
+      <div class="section-label">Auth Endpoints</div>
+      <div class="btn-group">
+        <button class="api-btn" onclick="callAPI('POST','/register',{username:'testuser',email:'test@example.com',password:'pass1234'})">
+          <span class="method-tag tag-post">POST</span> /register
+        </button>
+        <button class="api-btn" onclick="callAPI('POST','/login',{email:'test@example.com',password:'pass1234'})">
+          <span class="method-tag tag-post">POST</span> /login
+        </button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Protected Endpoints</div>
+      <div class="btn-group">
+        <button class="api-btn" onclick="callAPI('GET','/protected-data')">
+          <span class="method-tag tag-get">GET</span> /protected-data
+        </button>
+        <button class="api-btn" onclick="callAPI('GET','/health')">
+          <span class="method-tag tag-get">GET</span> /health
+        </button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Admin Endpoints</div>
+      <div class="btn-group">
+        <button class="api-btn" onclick="callAPI('GET','/admin/stats')">
+          <span class="method-tag tag-get">GET</span> /admin/stats
+        </button>
+        <button class="api-btn" onclick="callAPI('GET','/admin/logs')">
+          <span class="method-tag tag-get">GET</span> /admin/logs
+        </button>
+        <button class="api-btn" onclick="callAPI('GET','/admin/blocked-ips')">
+          <span class="method-tag tag-get">GET</span> /admin/blocked-ips
+        </button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <button class="spam-btn" onclick="spamRequests()">⚡ Spam 20 Requests</button>
+    <button class="reset-btn" onclick="resetAll()">↺ Reset Everything</button>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title">Response Output</div>
+      <div class="live-indicator">
+        <div class="live-dot"></div>
+        LIVE
+      </div>
+    </div>
+
+    <div class="response-area" id="responseArea">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">🛡️</div>
+        <h3>No requests yet</h3>
+        <p>Click any endpoint button on the left to send a real API request and see the response here.</p>
+      </div>
+    </div>
+
+    <div class="log-strip" id="logStrip">
+      <div class="log-item" style="color:var(--muted)">— activity log will appear here —</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let token = null;
+let reqCount = 0;
+const logs = [];
+
+function getBase() {
+  return document.getElementById('baseUrl').value.replace(/\/$/, '');
+}
+
+function colorizeJSON(obj) {
+  const str = JSON.stringify(obj, null, 2);
+  return str
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"([^"]+)":/g, '<span class="j-key">"$1"</span>:')
+    .replace(/: "([^"\\]*(\\.[^"\\]*)*)"/g, ': <span class="j-str">"$1"</span>')
+    .replace(/: (-?\d+\.?\d*)/g, ': <span class="j-num">$1</span>')
+    .replace(/: true/g, ': <span class="j-bool-true">true</span>')
+    .replace(/: false/g, ': <span class="j-bool-false">false</span>')
+    .replace(/: null/g, ': <span class="j-null">null</span>');
+}
+
+function statusClass(code) {
+  if (code === 200) return 's200';
+  if (code === 201) return 's201';
+  if (code === 401) return 's401';
+  if (code === 403) return 's403';
+  if (code === 429) return 's429';
+  if (code >= 500) return 's500';
+  return 's0';
+}
+
+function statusColor(code) {
+  if (code >= 200 && code < 300) return 'var(--accent)';
+  if (code === 401) return 'var(--yellow)';
+  if (code === 403) return 'var(--purple)';
+  if (code === 429) return 'var(--red)';
+  if (code >= 500) return 'var(--red)';
+  return 'var(--muted)';
+}
+
+function updateMeter() {
+  const pct = Math.min(100, (reqCount / 100) * 100);
+  const fill = document.getElementById('meterFill');
+  fill.style.width = pct + '%';
+  if (pct < 50) fill.style.background = 'var(--accent)';
+  else if (pct < 85) fill.style.background = 'var(--yellow)';
+  else fill.style.background = 'var(--red)';
+  document.getElementById('meterCount').innerHTML = `${reqCount} <span style="font-size:0.8rem;color:var(--muted)">/100</span>`;
+  document.getElementById('totalReqs').textContent = reqCount;
+}
+
+function addLog(method, path, status) {
+  const strip = document.getElementById('logStrip');
+  const color = status >= 200 && status < 300 ? '#10b981' : status === 429 ? '#ef4444' : status === 403 ? '#a78bfa' : '#f59e0b';
+  const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+  const el = document.createElement('div');
+  el.className = 'log-item';
+  el.innerHTML = `<div class="log-dot" style="background:${color}"></div><span style="color:${color}">${status}</span><span>${method} ${path}</span><span style="opacity:0.4">${time}</span>`;
+  // clear placeholder
+  if (strip.children.length === 1 && strip.children[0].textContent.includes('activity log')) strip.innerHTML = '';
+  strip.appendChild(el);
+  strip.scrollLeft = strip.scrollWidth;
+}
+
+function showResponse(method, path, status, data, ms) {
+  const area = document.getElementById('responseArea');
+  document.getElementById('emptyState')?.remove();
+
+  const card = document.createElement('div');
+  card.className = 'response-card';
+
+  const statusLabel = {200:'200 OK', 201:'201 Created', 401:'401 Unauthorized',
+    403:'403 Forbidden', 429:'429 Too Many Requests', 500:'500 Server Error', 0:'Network Error'}[status] || status;
+
+  card.innerHTML = `
+    <div class="response-header">
+      <span class="response-method" style="color:${method==='GET'?'var(--accent)':method==='POST'?'var(--blue)':'var(--red)'}">${method} ${path}</span>
+      <span class="response-status ${statusClass(status)}">${statusLabel}</span>
+      <span class="response-time">${ms}ms</span>
+    </div>
+    <div class="response-body">${colorizeJSON(data)}</div>`;
+
+  // prepend newest on top
+  area.insertBefore(card, area.firstChild);
+
+  document.getElementById('lastStatus').textContent = status;
+  document.getElementById('lastStatus').style.color = statusColor(status);
+}
+
+async function callAPI(method, path, body = null) {
+  reqCount++;
+  updateMeter();
+
+  const base = getBase();
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const opts = { method, headers };
+  if (body) opts.body = JSON.stringify(body);
+
+  const t0 = Date.now();
+  let status = 0, data = {};
+
+  try {
+    const res = await fetch(base + path, opts);
+    status = res.status;
+    data = await res.json();
+    const ms = Date.now() - t0;
+
+    // auto-save token
+    if (data.token) {
+      token = data.token;
+      document.getElementById('tokenBox').textContent = token.substring(0, 60) + '...';
+      document.getElementById('tokenLabel').textContent = '✅ Token saved — will be used automatically';
+      document.getElementById('tokenLabel').style.color = 'var(--accent)';
+    }
+
+    showResponse(method, path, status, data, ms);
+    addLog(method, path, status);
+
+  } catch (err) {
+    const ms = Date.now() - t0;
+    data = { error: 'Cannot connect to backend', detail: err.message, hint: `Make sure your server is running at ${base}` };
+    showResponse(method, path, 0, data, ms);
+    addLog(method, path, 0);
+  }
+}
+
+async function spamRequests() {
+  document.querySelector('.spam-btn').textContent = '⏳ Spamming...';
+  document.querySelector('.spam-btn').disabled = true;
+
+  for (let i = 0; i < 20; i++) {
+    await callAPI('GET', '/health');
+    await new Promise(r => setTimeout(r, 80));
+  }
+
+  document.querySelector('.spam-btn').textContent = '⚡ Spam 20 Requests';
+  document.querySelector('.spam-btn').disabled = false;
+}
+
+function resetAll() {
+  reqCount = 0; token = null;
+  updateMeter();
+  document.getElementById('tokenBox').textContent = '—';
+  document.getElementById('tokenLabel').textContent = 'No token yet';
+  document.getElementById('tokenLabel').style.color = '';
+  document.getElementById('lastStatus').textContent = '—';
+  document.getElementById('lastStatus').style.color = 'var(--muted)';
+  document.getElementById('logStrip').innerHTML = '<div class="log-item" style="color:var(--muted)">— activity log will appear here —</div>';
+  document.getElementById('responseArea').innerHTML = `
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">🛡️</div>
+      <h3>No requests yet</h3>
+      <p>Click any endpoint button on the left to send a real API request and see the response here.</p>
+    </div>`;
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rate Limiter — Simple Explainer</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: #f0f4ff;
+    color: #1a1a2e;
+    padding: 40px 20px;
+  }
+
+  .page { max-width: 760px; margin: 0 auto; }
+
+  /* TITLE */
+  .title-box {
+    text-align: center;
+    margin-bottom: 40px;
+    animation: popIn 0.5s ease both;
+  }
+  .title-box h1 { font-size: 2.2rem; font-weight: 900; color: #1a1a2e; line-height: 1.2; }
+  .title-box h1 span { color: #4f46e5; }
+  .title-box p { margin-top: 10px; font-size: 1rem; color: #6b7280; font-weight: 600; }
+
+  /* CARD */
+  .card {
+    background: white;
+    border-radius: 20px;
+    padding: 28px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    animation: popIn 0.5s ease both;
+  }
+
+  .card-title {
+    font-size: 0.7rem; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 0.12em;
+    color: #9ca3af; margin-bottom: 18px;
+  }
+
+  /* ANALOGY */
+  .analogy {
+    display: flex; align-items: center; gap: 20px;
+    background: #fef9ee; border-radius: 14px; padding: 20px;
+    border: 2px dashed #fbbf24;
+  }
+  .analogy-icon { font-size: 3rem; flex-shrink: 0; }
+  .analogy-text h3 { font-size: 1.1rem; font-weight: 800; color: #92400e; margin-bottom: 4px; }
+  .analogy-text p { font-size: 0.88rem; color: #78350f; line-height: 1.6; font-weight: 600; }
+
+  /* FLOW */
+  .flow { display: flex; flex-direction: column; gap: 0; }
+  .flow-item {
+    display: flex; gap: 16px; align-items: flex-start;
+    padding: 14px 0;
+    border-bottom: 1px dashed #e5e7eb;
+  }
+  .flow-item:last-child { border-bottom: none; }
+  .flow-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem; flex-shrink: 0;
+  }
+  .flow-text h4 { font-size: 0.95rem; font-weight: 800; margin-bottom: 2px; }
+  .flow-text p { font-size: 0.82rem; color: #6b7280; line-height: 1.5; font-weight: 600; }
+  .arrow { text-align: center; color: #d1d5db; font-size: 1.2rem; margin: 2px 0 2px 14px; }
+
+  /* WHAT HAPPENS */
+  .scenarios { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .scenario {
+    border-radius: 14px; padding: 16px; text-align: center;
+    transition: transform 0.2s;
+  }
+  .scenario:hover { transform: translateY(-3px); }
+  .scenario .icon { font-size: 2rem; margin-bottom: 8px; }
+  .scenario h4 { font-size: 0.82rem; font-weight: 800; margin-bottom: 4px; }
+  .scenario p { font-size: 0.72rem; font-weight: 600; line-height: 1.4; }
+
+  .s-ok { background: #f0fdf4; border: 2px solid #86efac; color: #166534; }
+  .s-warn { background: #fffbeb; border: 2px solid #fcd34d; color: #92400e; }
+  .s-block { background: #fef2f2; border: 2px solid #fca5a5; color: #991b1b; }
+
+  /* NUMBERS */
+  .numbers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .num-card {
+    border-radius: 14px; padding: 20px; text-align: center;
+  }
+  .num-card .big { font-size: 2.4rem; font-weight: 900; line-height: 1; margin-bottom: 4px; }
+  .num-card .label { font-size: 0.75rem; font-weight: 700; opacity: 0.8; }
+  .n1 { background: #ede9fe; color: #5b21b6; }
+  .n2 { background: #fef3c7; color: #92400e; }
+  .n3 { background: #d1fae5; color: #065f46; }
+
+  /* WHO USES */
+  .users { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .user-item {
+    display: flex; align-items: center; gap: 12px;
+    background: #f8fafc; border-radius: 12px; padding: 12px 14px;
+    border: 1.5px solid #e2e8f0;
+  }
+  .user-item .ico { font-size: 1.6rem; }
+  .user-item h4 { font-size: 0.85rem; font-weight: 800; margin-bottom: 1px; }
+  .user-item p { font-size: 0.72rem; color: #64748b; font-weight: 600; }
+
+  /* BOTTOM SUMMARY */
+  .summary {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    color: white; border-radius: 20px; padding: 30px;
+    text-align: center; margin-bottom: 0;
+  }
+  .summary h2 { font-size: 1.5rem; font-weight: 900; margin-bottom: 10px; }
+  .summary p { font-size: 0.9rem; opacity: 0.85; line-height: 1.7; font-weight: 600; max-width: 500px; margin: 0 auto; }
+
+  @keyframes popIn {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .card:nth-child(2){ animation-delay:0.1s; }
+  .card:nth-child(3){ animation-delay:0.2s; }
+  .card:nth-child(4){ animation-delay:0.3s; }
+  .card:nth-child(5){ animation-delay:0.4s; }
+  .card:nth-child(6){ animation-delay:0.5s; }
+
+  @media(max-width:560px){
+    .scenarios, .numbers { grid-template-columns: 1fr; }
+    .users { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- TITLE -->
+  <div class="title-box">
+    <h1>What is an<br><span>API Rate Limiter?</span></h1>
+    <p>A simple visual explanation 👇</p>
+  </div>
+
+  <!-- ANALOGY -->
+  <div class="card">
+    <div class="card-title">🍋 Think of it like this</div>
+    <div class="analogy">
+      <div class="analogy-icon">🏪</div>
+      <div class="analogy-text">
+        <h3>A shop with a entry rule</h3>
+        <p>A shop allows <strong>100 customers per hour.</strong> If someone tries to enter for the 101st time — the door locks. If they keep trying too many times — they get <strong>banned for 1 hour.</strong></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOW IT WORKS FLOW -->
+  <div class="card">
+    <div class="card-title">⚙️ How it works — step by step</div>
+    <div class="flow">
+
+      <div class="flow-item">
+        <div class="flow-icon" style="background:#ede9fe">🌐</div>
+        <div class="flow-text">
+          <h4>Someone sends a request</h4>
+          <p>A user, app, or bot tries to access your API (like logging in or getting data).</p>
+        </div>
+      </div>
+      <div class="arrow">↓</div>
+
+      <div class="flow-item">
+        <div class="flow-icon" style="background:#fef3c7">🔍</div>
+        <div class="flow-text">
+          <h4>Check: Is this IP blocked?</h4>
+          <p>We look up their IP address. If they were blocked before — immediately rejected.</p>
+        </div>
+      </div>
+      <div class="arrow">↓</div>
+
+      <div class="flow-item">
+        <div class="flow-icon" style="background:#dbeafe">🔢</div>
+        <div class="flow-text">
+          <h4>Count their requests</h4>
+          <p>We count how many requests this IP sent in the last 15 minutes. Over 100? Rejected.</p>
+        </div>
+      </div>
+      <div class="arrow">↓</div>
+
+      <div class="flow-item">
+        <div class="flow-icon" style="background:#fee2e2">⚠️</div>
+        <div class="flow-text">
+          <h4>Repeated violations = Auto-block</h4>
+          <p>If they exceed the limit 3+ times, their IP is blocked for 1 full hour automatically.</p>
+        </div>
+      </div>
+      <div class="arrow">↓</div>
+
+      <div class="flow-item">
+        <div class="flow-icon" style="background:#d1fae5">✅</div>
+        <div class="flow-text">
+          <h4>Normal users pass through</h4>
+          <p>Regular users never hit the limit. They get their data, everything works fine.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- WHAT HAPPENS IN EACH CASE -->
+  <div class="card">
+    <div class="card-title">📬 What the user gets back</div>
+    <div class="scenarios">
+      <div class="scenario s-ok">
+        <div class="icon">✅</div>
+        <h4>Normal Request</h4>
+        <p>Under 100 requests — gets their data back normally</p>
+      </div>
+      <div class="scenario s-warn">
+        <div class="icon">⏳</div>
+        <h4>Too Many (429)</h4>
+        <p>"Too many requests. Try again in 15 minutes."</p>
+      </div>
+      <div class="scenario s-block">
+        <div class="icon">🚫</div>
+        <h4>IP Blocked (403)</h4>
+        <p>"You are blocked for 1 hour due to repeated abuse."</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- KEY NUMBERS -->
+  <div class="card">
+    <div class="card-title">🔢 The key numbers</div>
+    <div class="numbers">
+      <div class="num-card n1">
+        <div class="big">100</div>
+        <div class="label">Max requests<br>per 15 minutes</div>
+      </div>
+      <div class="num-card n2">
+        <div class="big">3×</div>
+        <div class="label">Violations before<br>IP gets blocked</div>
+      </div>
+      <div class="num-card n3">
+        <div class="big">1hr</div>
+        <div class="label">How long an IP<br>stays blocked</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WHO USES THIS -->
+  <div class="card">
+    <div class="card-title">🏢 Every big company does this</div>
+    <div class="users">
+      <div class="user-item">
+        <div class="ico">🤖</div>
+        <div><h4>OpenAI</h4><p>Limits API calls per minute by plan</p></div>
+      </div>
+      <div class="user-item">
+        <div class="ico">🐦</div>
+        <div><h4>Twitter / X</h4><p>Limits tweets you can read via API</p></div>
+      </div>
+      <div class="user-item">
+        <div class="ico">💳</div>
+        <div><h4>Stripe</h4><p>Rate limits payments to prevent fraud</p></div>
+      </div>
+      <div class="user-item">
+        <div class="ico">🗺️</div>
+        <div><h4>Google Maps</h4><p>Limits map requests per day per key</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUMMARY -->
+  <div class="card summary">
+    <h2>🛡️ In one sentence</h2>
+    <p>A Rate Limiter is like a security guard for your API — it lets normal users in, slows down heavy users, and permanently blocks abusers. Every real-world API needs one.</p>
+  </div>
+
+</div>
+</body>
+</html>
